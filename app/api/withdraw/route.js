@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { TonClient, WalletContractV5R1, internal } from '@ton/ton';
+import { TonClient, WalletContractV4, internal } from '@ton/ton';
 import { mnemonicToWalletKey } from '@ton/crypto'; 
 import { getHttpEndpoint } from '@orbs-network/ton-access';
 
@@ -21,9 +21,8 @@ export async function POST(req) {
     const mnemonic = process.env.WALLET_MNEMONIC.split(' ');
     const keyPair = await mnemonicToWalletKey(mnemonic);
     
-    // Correct creation syntax for WalletContractV5R1 including networkGlobalId configuration
-    const wallet = WalletContractV5R1.create({ 
-      walletId: { networkGlobalId: -239 }, 
+    // Universally compatible V4 wallet contract initialization
+    const wallet = WalletContractV4.create({ 
       publicKey: keyPair.publicKey, 
       workchain: 0 
     });
