@@ -10,7 +10,8 @@
   "dependencies": {
     "@orbs-network/ton-access": "latest",
     "@ton/crypto": "^3.2.0",
-    "@ton/ton": "^13.9.0",
+    "@ton/core": "^0.63.1",
+    "@ton/ton": "^16.3.0",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"
