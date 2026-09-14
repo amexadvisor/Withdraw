@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { TonClient, WalletContractV4, internal } from '@ton/ton';
-import { mnemonicToWalletKey } from '@ton/crypto';
+// 1. Import keyPairFromSeed instead of mnemonicToWalletKey
+import { keyPairFromSeed } from '@ton/crypto'; 
 
 export async function POST(req) {
   try {
@@ -19,8 +20,9 @@ export async function POST(req) {
       apiKey: process.env.TONCENTER_API_KEY, 
     });
 
-    const mnemonic = process.env.WALLET_MNEMONIC.split(' ');
-    const key = await mnemonicToWalletKey(mnemonic);
+    // 2. Read the hex string and convert it to a Buffer seed
+    const seed = Buffer.from(process.env.WALLET_PRIVATE_KEY, 'hex');
+    const key = keyPairFromSeed(seed);
     
     const wallet = WalletContractV4.create({ publicKey: key.publicKey, workchain: 0 });
     const contract = client.open(wallet);
