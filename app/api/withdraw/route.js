@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { TonClient, WalletContractV4, internal } from '@ton/ton';
+import { TonClient, WalletContractV5R1, internal } from '@ton/ton';
 import { mnemonicToWalletKey } from '@ton/crypto'; 
-import { getHttpEndpoint } from '@orbs-network/ton-access';
 
 export async function POST(req) {
   try {
@@ -15,14 +14,16 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Missing address or amount' }, { status: 400 });
     }
 
-    const endpoint = await getHttpEndpoint();
-    const client = new TonClient({ endpoint });
+    // Direct, reliable TonCenter public RPC endpoint (bypassing Orbs dynamic fetcher)
+    const client = new TonClient({
+      endpoint: 'https://toncenter.com/api/v2/jsonRPC'
+    });
 
     const mnemonic = process.env.WALLET_MNEMONIC.split(' ');
     const keyPair = await mnemonicToWalletKey(mnemonic);
     
-    // Universally compatible V4 wallet contract initialization
-    const wallet = WalletContractV4.create({ 
+    const wallet = WalletContractV5R1.create({ 
+      walletId: { networkGlobalId: -239 }, 
       publicKey: keyPair.publicKey, 
       workchain: 0 
     });
