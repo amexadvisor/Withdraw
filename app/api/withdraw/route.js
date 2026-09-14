@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { TonClient, WalletContractV4, internal } from '@ton/ton';
 import { keyPairFromSeed } from '@ton/crypto'; 
+import { getHttpEndpoint } from '@orbs-network/ton-access';
 
 export async function POST(req) {
   try {
@@ -16,11 +17,9 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Missing address or amount' }, { status: 400 });
     }
 
-    // 3. Initialize TON Client (Public Tier, NO API Key needed)
-        const client = new TonClient({
-      endpoint: 'https://ton.access.orbs.network/rpc/toncenter-api-v2/jsonRPC'
-    });
-
+    // 3. Dynamically fetch a healthy Orbs node endpoint
+    const endpoint = await getHttpEndpoint();
+    const client = new TonClient({ endpoint });
 
     // 4. Generate Key Pair from Hex Private Key
     const seed = Buffer.from(process.env.WALLET_PRIVATE_KEY, 'hex');
