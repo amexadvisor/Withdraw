@@ -17,9 +17,10 @@ export async function POST(req) {
     }
 
     // 3. Initialize TON Client (Public Tier, NO API Key needed)
-    const client = new TonClient({
-      endpoint: 'https://toncenter.com/api/v2/jsonRPC'
+        const client = new TonClient({
+      endpoint: 'https://ton.access.orbs.network/rpc/toncenter-api-v2/jsonRPC'
     });
+
 
     // 4. Generate Key Pair from Hex Private Key
     const seed = Buffer.from(process.env.WALLET_PRIVATE_KEY, 'hex');
