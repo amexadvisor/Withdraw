@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { TonClient, WalletContractV4, internal } from '@ton/ton';
-import { keyPairFromSeed } from '@ton/crypto'; 
+import { mnemonicToWalletKey } from '@ton/crypto'; 
 import { getHttpEndpoint } from '@orbs-network/ton-access';
 
 export async function POST(req) {
   try {
-    // 1. Verify Authorization Header
+    // 1. Verify Authorization Header from TeleBot
     const authHeader = req.headers.get('authorization');
     if (authHeader !== `Bearer ${process.env.AUTH_SECRET}`) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -17,15 +17,15 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Missing address or amount' }, { status: 400 });
     }
 
-    // 3. Dynamically fetch a healthy Orbs node endpoint
+    // 3. Dynamically fetch a healthy, rate-limit-free Orbs node endpoint
     const endpoint = await getHttpEndpoint();
     const client = new TonClient({ endpoint });
 
-    // 4. Generate Key Pair from Hex Private Key
-    const seed = Buffer.from(process.env.WALLET_PRIVATE_KEY, 'hex');
-    const key = keyPairFromSeed(seed);
+    // 4. Generate Key Pair from 12-word Mnemonic
+    const mnemonic = process.env.WALLET_MNEMONIC.split(' ');
+    const key = await mnemonicToWalletKey(mnemonic);
     
-    // 5. Initialize Wallet Contract
+    // 5. Initialize Wallet Contract (V4 standard)
     const wallet = WalletContractV4.create({ publicKey: key.publicKey, workchain: 0 });
     const contract = client.open(wallet);
 
