@@ -4,7 +4,7 @@ import { mnemonicToWalletKey } from '@ton/crypto';
 
 export const runtime = 'nodejs';
 
-// Retries a request a few times if TonCenter returns 429 (rate limited),
+// Retries a request  a few times if TonCenter returns 429 (rate limited),
 // waiting longer between each attempt. This is what was missing —
 // the wallet/transaction code was already correct.
 async function withRetry(fn, { retries = 4, baseDelayMs = 1500 } = {}) {
