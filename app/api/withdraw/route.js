@@ -2,9 +2,30 @@ import { NextResponse } from 'next/server';
 import { TonClient, WalletContractV5R1, internal } from '@ton/ton';
 import { mnemonicToWalletKey } from '@ton/crypto';
 
-// Force Node runtime — @ton/ton needs Node's crypto internals,
-// and Edge runtime can silently break its exports under bundling.
 export const runtime = 'nodejs';
+
+// Retries a request a few times if TonCenter returns 429 (rate limited),
+// waiting longer between each attempt. This is what was missing —
+// the wallet/transaction code was already correct.
+async function withRetry(fn, { retries = 4, baseDelayMs = 1500 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status;
+      const isRateLimit = status === 429;
+      if (!isRateLimit || attempt === retries) {
+        throw error;
+      }
+      const delay = baseDelayMs * Math.pow(2, attempt); // 1.5s, 3s, 6s, 12s
+      console.warn(`TonCenter rate limited (429). Retry ${attempt + 1}/${retries} in ${delay}ms.`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+}
 
 export async function POST(req) {
   try {
@@ -18,8 +39,12 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Missing address or amount' }, { status: 400 });
     }
 
+    // Add TONCENTER_API_KEY in your env vars to get a much higher rate
+    // limit than the shared public endpoint. Get a free key from
+    // @tonapibot on Telegram or the toncenter.com docs.
     const client = new TonClient({
       endpoint: 'https://toncenter.com/api/v2/jsonRPC',
+      apiKey: process.env.TONCENTER_API_KEY, // undefined is fine, just stays on public tier
     });
 
     if (!process.env.WALLET_MNEMONIC) {
@@ -35,24 +60,28 @@ export async function POST(req) {
     const contract = client.open(wallet);
 
     const sendAmount = amount.toString();
-    const seqno = await contract.getSeqno();
 
-    await contract.sendTransfer({
-      seqno,
-      secretKey: keyPair.secretKey,
-      messages: [
-        internal({
-          to: address,
-          value: sendAmount,
-          body: 'GRAM Payout',
-          bounce: false,
-        }),
-      ],
-    });
+    const seqno = await withRetry(() => contract.getSeqno());
+
+    await withRetry(() =>
+      contract.sendTransfer({
+        seqno,
+        secretKey: keyPair.secretKey,
+        messages: [
+          internal({
+            to: address,
+            value: sendAmount,
+            body: 'GRAM Payout',
+            bounce: false,
+          }),
+        ],
+      })
+    );
 
     return NextResponse.json({ success: true, message: 'Transaction broadcasted' });
   } catch (error) {
     console.error('Withdrawal Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    const status = error?.response?.status === 429 ? 429 : 500;
+    return NextResponse.json({ success: false, error: error.message }, { status });
   }
 }
