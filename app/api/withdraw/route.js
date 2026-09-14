@@ -1,32 +1,35 @@
 import { NextResponse } from 'next/server';
 import { TonClient, WalletContractV4, internal } from '@ton/ton';
-// 1. Import keyPairFromSeed instead of mnemonicToWalletKey
 import { keyPairFromSeed } from '@ton/crypto'; 
 
 export async function POST(req) {
   try {
+    // 1. Verify Authorization Header
     const authHeader = req.headers.get('authorization');
     if (authHeader !== `Bearer ${process.env.AUTH_SECRET}`) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
+    // 2. Parse User Input
     const { address, amount } = await req.json();
     if (!address || !amount) {
       return NextResponse.json({ success: false, error: 'Missing address or amount' }, { status: 400 });
     }
 
+    // 3. Initialize TON Client (Public Tier, NO API Key needed)
     const client = new TonClient({
-      endpoint: 'https://toncenter.com/api/v2/jsonRPC',
-      apiKey: process.env.TONCENTER_API_KEY, 
+      endpoint: 'https://toncenter.com/api/v2/jsonRPC'
     });
 
-    // 2. Read the hex string and convert it to a Buffer seed
+    // 4. Generate Key Pair from Hex Private Key
     const seed = Buffer.from(process.env.WALLET_PRIVATE_KEY, 'hex');
     const key = keyPairFromSeed(seed);
     
+    // 5. Initialize Wallet Contract
     const wallet = WalletContractV4.create({ publicKey: key.publicKey, workchain: 0 });
     const contract = client.open(wallet);
 
+    // 6. Execute Transfer
     const sendAmount = amount.toString(); 
     const seqno = await contract.getSeqno();
 
