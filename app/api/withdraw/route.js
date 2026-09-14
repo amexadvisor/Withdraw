@@ -14,7 +14,7 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Missing address or amount' }, { status: 400 });
     }
 
-    // Direct, reliable TonCenter public RPC endpoint (bypassing Orbs dynamic fetcher)
+    // Direct, reliable TonCenter public RPC endpoint
     const client = new TonClient({
       endpoint: 'https://toncenter.com/api/v2/jsonRPC'
     });
@@ -22,10 +22,10 @@ export async function POST(req) {
     const mnemonic = process.env.WALLET_MNEMONIC.split(' ');
     const keyPair = await mnemonicToWalletKey(mnemonic);
     
+    // Correct V5R1 creation syntax matching the on-chain deployment
     const wallet = WalletContractV5R1.create({ 
-      walletId: { networkGlobalId: -239 }, 
-      publicKey: keyPair.publicKey, 
-      workchain: 0 
+      workchain: 0, 
+      publicKey: keyPair.publicKey 
     });
     const contract = client.open(wallet);
 
