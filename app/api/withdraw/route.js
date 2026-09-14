@@ -29,9 +29,16 @@ export async function POST(req) {
     const wallet = WalletContractV4.create({ publicKey: key.publicKey, workchain: 0 });
     const contract = client.open(wallet);
 
-    // 6. Execute Transfer
+    // 6. Execute Transfer with Safe Seqno Fallback for Inactive Wallets
     const sendAmount = amount.toString(); 
-    const seqno = await contract.getSeqno();
+    
+    let seqno = 0;
+    try {
+      seqno = await contract.getSeqno();
+    } catch (e) {
+      // Wallet is inactive/uninitialized; seqno defaults to 0 to trigger deployment
+      seqno = 0;
+    }
 
     await contract.sendTransfer({
       seqno,
