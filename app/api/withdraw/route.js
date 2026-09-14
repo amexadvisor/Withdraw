@@ -29,31 +29,39 @@ export async function POST(req) {
     const wallet = WalletContractV4.create({ publicKey: key.publicKey, workchain: 0 });
     const contract = client.open(wallet);
 
-    // 6. Execute Transfer with Safe Seqno Fallback for Inactive Wallets
-    const sendAmount = amount.toString(); 
+    // 6. Check contract deployment state on-chain
+    const isDeployed = await client.isContractDeployed(wallet.address);
     
     let seqno = 0;
-    try {
-      seqno = await contract.getSeqno();
-    } catch (e) {
-      // Wallet is inactive/uninitialized; seqno defaults to 0 to trigger deployment
-      seqno = 0;
-    }
-
-    await contract.sendTransfer({
-      seqno,
+    let transferParams = {
       secretKey: key.secretKey,
       messages: [
         internal({
           to: address,
-          value: sendAmount,
+          value: amount.toString(),
           body: 'GRAM Payout', 
           bounce: false,
         })
       ]
-    });
+    };
 
-    return NextResponse.json({ success: true, message: 'Transaction broadcasted' });
+    if (isDeployed) {
+      seqno = await contract.getSeqno();
+      transferParams.seqno = seqno;
+    } else {
+      // If the wallet is inactive, seqno is 0 and we must attach wallet's stateInit to deploy it
+      transferParams.seqno = 0;
+      transferParams.sendMode = 3; 
+      transferParams.allWallets = false;
+      // Attach initialization state for the uninitialized contract
+      transferParams.code = wallet.init.code;
+      transferParams.data = wallet.init.data;
+    }
+
+    // 7. Execute Transfer
+    await contract.sendTransfer(transferParams);
+
+    return NextResponse.json({ success: true, message: 'Transaction broadcasted & contract deployed' });
 
   } catch (error) {
     console.error('Withdrawal Error:', error);
