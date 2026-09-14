@@ -19,10 +19,14 @@ export async function POST(req) {
     const client = new TonClient({ endpoint });
 
     const mnemonic = process.env.WALLET_MNEMONIC.split(' ');
-    const key = await mnemonicToWalletKey(mnemonic);
+    const keyPair = await mnemonicToWalletKey(mnemonic);
     
-    // Updated to match your wallet v5 r1 on-chain contract type
-    const wallet = WalletContractV5R1.create({ publicKey: key.publicKey, workchain: 0 });
+    // Correct creation syntax for WalletContractV5R1 including networkGlobalId configuration
+    const wallet = WalletContractV5R1.create({ 
+      walletId: { networkGlobalId: -239 }, 
+      publicKey: keyPair.publicKey, 
+      workchain: 0 
+    });
     const contract = client.open(wallet);
 
     const sendAmount = amount.toString(); 
@@ -30,7 +34,7 @@ export async function POST(req) {
 
     await contract.sendTransfer({
       seqno,
-      secretKey: key.secretKey,
+      secretKey: keyPair.secretKey,
       messages: [
         internal({
           to: address,
